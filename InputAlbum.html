@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Three Tabs Input</title>
+	<style>
+		:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+		.tabs{display:flex;gap:8px;border-bottom:1px solid #ddd;padding:8px}
+		.tab-btn{background:transparent;border:0;padding:8px 12px;cursor:pointer;border-radius:6px}
+		.tab-btn[aria-selected="true"]{background:#0b69ff;color:#fff}
+		.panel{display:none;padding:16px}
+		.panel.active{display:block}
+		.field{margin-bottom:8px}
+		label{display:block;font-size:13px;margin-bottom:4px}
+		input[type="text"],textarea,select{width:100%;Padding:8px;border:1px solid #ccc;border-radius:6px}
+		.container{max-width:720px;margin:24px auto;padding:12px}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h2>Input Album — Three Tabs</h2>
+		<div class="tabs" role="tablist" aria-label="Album tabs">
+			<button class="tab-btn" role="tab" aria-selected="true" aria-controls="tab1" id="btn-tab1" data-tab="tab1">General</button>
+			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab2" id="btn-tab2" data-tab="tab2">Details</button>
+			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab3" id="btn-tab3" data-tab="tab3">Files</button>
+		</div>
+
+		<section id="tab1" class="panel active" role="tabpanel" aria-labelledby="btn-tab1">
+			<form id="form-tab1">
+				<div class="field">
+					<label for="title">Album Title</label>
+					<input id="title" name="title" type="text" placeholder="My Vacation" />
+				</div>
+				<div class="field">
+					<label for="desc">Description</label>
+					<textarea id="desc" name="description" rows="4" placeholder="Short description"></textarea>
+				</div>
+			</form>
+		</section>
+
+		<section id="tab2" class="panel" role="tabpanel" aria-labelledby="btn-tab2">
+			<form id="form-tab2">
+				<div class="field">
+					<label for="date">Date</label>
+					<input id="date" name="date" type="text" placeholder="2026-02-24" />
+				</div>
+				<div class="field">
+					<label for="location">Location</label>
+					<input id="location" name="location" type="text" placeholder="City, Country" />
+				</div>
+			</form>
+		</section>
+
+		<section id="tab3" class="panel" role="tabpanel" aria-labelledby="btn-tab3">
+			<form id="form-tab3">
+				<div class="field">
+					<label for="cover">Cover Image URL</label>
+					<input id="cover" name="cover" type="text" placeholder="https://..." />
+				</div>
+				<div class="field">
+					<label for="files">Attach files (comma-separated)</label>
+					<input id="files" name="files" type="text" placeholder="img1.jpg, img2.jpg" />
+				</div>
+			</form>
+		</section>
+
+		<div style="margin-top:12px;display:flex;gap:8px">
+			<button id="saveBtn">Save</button>
+			<button id="resetBtn">Reset</button>
+		</div>
+	</div>
+
+	<script>
+		(function(){
+			const tabs = document.querySelectorAll('.tab-btn');
+			const panels = document.querySelectorAll('.panel');
+			function activate(tabId){
+				tabs.forEach(b=>{
+					const sel = b.dataset.tab===tabId;
+					b.setAttribute('aria-selected', sel);
+				});
+				panels.forEach(p=>p.classList.toggle('active', p.id===tabId));
+			}
+			tabs.forEach(btn=>btn.addEventListener('click',()=>activate(btn.dataset.tab)));
+
+			document.getElementById('saveBtn').addEventListener('click',()=>{
+				const data = Object.fromEntries(new FormData(document.getElementById('form-tab1')).entries());
+				Object.assign(data, Object.fromEntries(new FormData(document.getElementById('form-tab2')).entries()));
+				Object.assign(data, Object.fromEntries(new FormData(document.getElementById('form-tab3')).entries()));
+				alert('Collected data:\n' + JSON.stringify(data, null, 2));
+			});
+			document.getElementById('resetBtn').addEventListener('click',()=>{
+				document.getElementById('form-tab1').reset();
+				document.getElementById('form-tab2').reset();
+				document.getElementById('form-tab3').reset();
+			});
+		})();
+	</script>
+</body>
+</html>

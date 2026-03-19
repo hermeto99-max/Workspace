@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Collection — Albums</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111}
+    body{margin:0;padding:18px;background:#f7fafc}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:20px}
+    .controls{display:flex;gap:8px;align-items:center}
+    select,button{padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1}
+    table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff}
+    th,td{padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:left}
+    th{background:#f1f5f9}
+    img.thumb{width:60px;height:60px;object-fit:cover;border-radius:4px}
+    .pager{display:flex;gap:8px;align-items:center}
+    .note{margin-top:8px;color:#555;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a href="home.html" style="text-decoration:none;font-size:22px;margin-right:10px;vertical-align:middle;">&#8592; Home</a>
+    <h1 style="display:inline;vertical-align:middle;">Albums Collection</h1>
+    <div class="controls">
+      <label for="search">Search Author:</label>
+      <input type="text" id="search" placeholder="Artist name or first name" style="padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1;min-width:180px;">
+      <label for="perPage">Per page:</label>
+      <select id="perPage"><option>10</option><option>50</option><option>100</option></select>
+      <div class="pager" id="pager-top">
+        <button id="first-top">⏮ First</button>
+        <button id="prev-top">Prev</button>
+        <span id="pageInfo-top">Page 1</span>
+        <button id="next-top">Next</button>
+        <button id="last-top">Last ⏭</button>
+      </div>
+    </div>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>Album Cover</th>
+        <th id="th-author" style="cursor:pointer">Author <span id="arrow-author">⇅</span></th>
+        <th>Title</th>
+        <th id="th-year" style="cursor:pointer">Year <span id="arrow-year">⇅</span></th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div class="pager" id="pager-bottom">
+    <button id="first-bottom">⏮ First</button>
+    <button id="prev-bottom">Prev</button>
+    <span id="pageInfo-bottom">Page 1</span>
+    <button id="next-bottom">Next</button>
+    <button id="last-bottom">Last ⏭</button>
+  </div>
+
+  <p class="note">Images are loaded from <code>/images/&lt;picture-filename&gt;</code> which maps to <em>/home/public/images/</em> on the server.</p>
+
+  <script>
+    (function(){
+      const perPageEl = document.getElementById('perPage');
+      let orderBy = 'year';
+      let orderDir = 'asc';
+      let search = null; // null means 'not set by user yet'
+      const thAuthor = document.getElementById('th-author');
+      const thYear = document.getElementById('th-year');
+      const arrowAuthor = document.getElementById('arrow-author');
+      const arrowYear = document.getElementById('arrow-year');
+      // Pager controls (top)
+      const prevBtnTop = document.getElementById('prev-top');
+      const nextBtnTop = document.getElementById('next-top');
+      const firstBtnTop = document.getElementById('first-top');
+      const lastBtnTop = document.getElementById('last-top');
+      const pageInfoTop = document.getElementById('pageInfo-top');
+      // Pager controls (bottom)
+      const prevBtnBottom = document.getElementById('prev-bottom');
+      const nextBtnBottom = document.getElementById('next-bottom');
+      const firstBtnBottom = document.getElementById('first-bottom');
+      const lastBtnBottom = document.getElementById('last-bottom');
+      const pageInfoBottom = document.getElementById('pageInfo-bottom');
+      const searchEl = document.getElementById('search');
+      const tbody = document.querySelector('#tbl tbody');
+
+      let page = 1;
+      let perPage = Number(perPageEl.value);
+      let total = 0;
+
+      perPageEl.addEventListener('change', ()=>{ perPage = Number(perPageEl.value); page = 1; load(); });
+      searchEl.addEventListener('input', ()=>{
+        search = searchEl.value.trim();
+        page = 1;
+        load();
+      });
+      thAuthor.addEventListener('click', () => {
+        if(orderBy === 'author') {
+          orderDir = orderDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          orderBy = 'author';
+          orderDir = 'asc';
+        }
+        page = 1;
+        updateArrows();
+        load();
+      });
+      thYear.addEventListener('click', () => {
+        if(orderBy === 'year') {
+          orderDir = orderDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          orderBy = 'year';
+          orderDir = 'asc';
+        }
+        page = 1;
+        updateArrows();
+        load();
+      });
+      // Pager events (top)
+      prevBtnTop.addEventListener('click', ()=>{ if(page>1){ page--; load(); } });
+      nextBtnTop.addEventListener('click', ()=>{ if(page*perPage < total){ page++; load(); } });
+      firstBtnTop.addEventListener('click', ()=>{ if(page!==1){ page=1; load(); } });
+      lastBtnTop.addEventListener('click', ()=>{ const lastPage = Math.ceil(total/perPage); if(page!==lastPage){ page=lastPage; load(); } });
+      // Pager events (bottom)
+      prevBtnBottom.addEventListener('click', ()=>{ if(page>1){ page--; load(); } });
+      nextBtnBottom.addEventListener('click', ()=>{ if(page*perPage < total){ page++; load(); } });
+      firstBtnBottom.addEventListener('click', ()=>{ if(page!==1){ page=1; load(); } });
+      lastBtnBottom.addEventListener('click', ()=>{ const lastPage = Math.ceil(total/perPage); if(page!==lastPage){ page=lastPage; load(); } });
+
+      function updateArrows() {
+        arrowAuthor.textContent = orderBy === 'author' ? (orderDir === 'asc' ? '↑' : '↓') : '⇅';
+        arrowYear.textContent = orderBy === 'year' ? (orderDir === 'asc' ? '↑' : '↓') : '⇅';
+      }
+      // Removed prevBtn and nextBtn event listeners (they are not defined)
+
+      async function load(){
+        let url = `/api/albums?page=${page}&perPage=${perPage}&orderBy=${encodeURIComponent(orderBy)}&orderDir=${encodeURIComponent(orderDir)}`;
+        if (search !== null && search !== '') {
+          url += `&search=${encodeURIComponent(search)}`;
+        }
+        try {
+          const res = await fetch(url);
+          if(!res.ok){
+            console.error('Failed to load albums:', res.status, res.statusText);
+            alert('Failed to load albums');
+            return;
+          }
+          const j = await res.json();
+          console.log('API response:', j);
+          total = j.total || 0;
+          // Update both pagers
+          const lastPage = Math.max(1, Math.ceil(total/perPage));
+          pageInfoTop.textContent = `Page ${j.page} — ${Math.min((j.page-1)*j.perPage+1, total)} to ${Math.min(j.page*j.perPage, total)} of ${total}`;
+          pageInfoBottom.textContent = pageInfoTop.textContent;
+
+          tbody.innerHTML = '';
+          for(const r of j.data){
+            const tr = document.createElement('tr');
+            // Album Cover
+            const imgTd = document.createElement('td');
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            img.alt = r.title || '';
+            img.src = r.picture ? `/images/${encodeURIComponent(r.picture)}` : '';
+            imgTd.appendChild(img);
+            tr.appendChild(imgTd);
+            // Author (artist_name + space + artist_fname)
+            tr.appendChild(cell((r.artist_name || '') + ' ' + (r.artist_fname || '')));
+            // Title
+            tr.appendChild(cell(r.title));
+            // Year
+            tr.appendChild(cell(r.year));
+            // Action buttons
+            const actionTd = document.createElement('td');
+            actionTd.style.whiteSpace = 'nowrap';
+            //sprincip srart
+            actionTd.innerHTML = `
+              <button style="margin-right:4px;" onclick="alert('Display Details for: ${r.title.replace(/'/g, '\\')}')">Display Details</button>
+              <button style="margin-right:4px;" onclick="alert('Delete Album: ${r.title.replace(/'/g, '\\')}')">Delete Album</button>
+              <button onclick="alert('Modify Album: ${r.title.replace(/'/g, '\\')}')">Modify Album</button>
+            `;
+            //sprincip end
+            tr.appendChild(actionTd);
+            tbody.appendChild(tr);
+          }
+        } catch (err) {
+          console.error('Error in load():', err);
+        }
+      }
+
+      function cell(v){ const td=document.createElement('td'); td.textContent = v==null? '': v; return td }
+
+      // Ensure search is cleared on page load (show all records)
+      search = null;
+      if (searchEl) searchEl.value = '';
+      load();
+    })();
+  </script>
+</body>
+</html>
