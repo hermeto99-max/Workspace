@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Album Details</title>
+  <style>
+                .flex-row {
+                  display: flex;
+                  flex-direction: row;
+                  gap: 32px;
+                  justify-content: center;
+                  align-items: flex-start;
+                  margin-top: 32px;
+                }
+                .musicians-section, .songs-section {
+                  max-width: 340px;
+                  min-width: 220px;
+                  font-size: 1em;
+                  flex: 1 1 0;
+                }
+                .songs-table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-top: 10px;
+                }
+                .songs-table th, .songs-table td {
+                  padding: 6px 10px;
+                  border-bottom: 1px solid #eee;
+                  text-align: left;
+                }
+                .songs-table th {
+                  background: #f7f7fa;
+                }
+                  .tech-table-section {
+                    max-width: 700px;
+                    margin: 40px auto 0 auto;
+                    font-size: 1em;
+                  }
+                  .tech-table-title {
+                    font-weight: bold;
+                    font-size: 1.1em;
+                    margin-bottom: 6px;
+                    text-align: left;
+                  }
+                  .tech-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 10px;
+                  }
+                  .tech-table td {
+                    padding: 6px 10px;
+                    border-bottom: 1px solid #eee;
+                  }
+            .musicians-section {
+              margin: 32px auto 0 auto;
+              max-width: 700px;
+              font-size: 1em;
+            }
+            .musicians-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            .musicians-table th, .musicians-table td {
+              padding: 6px 10px;
+              border-bottom: 1px solid #eee;
+              text-align: left;
+            }
+            .musicians-table th {
+              background: #f7f7fa;
+            }
+            .bio-link {
+              color: #2d7be5;
+              text-decoration: underline;
+              cursor: pointer;
+            }
+            .pager {
+              margin: 10px 0 0 0;
+              text-align: center;
+            }
+            .pager button {
+              margin: 0 4px;
+              padding: 4px 10px;
+              border-radius: 4px;
+              border: 1px solid #cbd5e1;
+              background: #f7fafc;
+              cursor: pointer;
+            }
+        .album-image {
+          display: block;
+          margin: 18px auto 8px auto;
+          max-width: 260px;
+          max-height: 260px;
+          width: auto;
+          height: auto;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px #0001;
+        }
+        .listen-btn {
+          display: block;
+          margin: 18px auto 0 auto;
+          padding: 10px 28px;
+          font-size: 1.1em;
+          border-radius: 6px;
+          border: none;
+          background: #2d7be5;
+          color: #fff;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .listen-btn:hover {
+          background: #195ca7;
+        }
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111}
+    body{margin:0;padding:18px;background:#f7fafc}
+    .container{max-width:1400px;margin:8px auto 8px auto;background:#fff;padding:8px 4px 4px 4px;box-shadow:none;border-radius:0;}
+    .back-btn {
+      display: block;
+      margin: 40px auto 0 auto;
+      padding: 12px 32px;
+      font-size: 1.1em;
+      border-radius: 6px;
+      border: none;
+      background: #2d7be5;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-align: center;
+      text-decoration: none;
+      width: fit-content;
+    }
+    .back-btn:hover {
+      background: #195ca7;
+    }
+    h1{margin-top:0}
+    .album-title{
+      font-size:2.2em;
+      margin:12px 0 12px 0;
+      text-align:center;
+      font-weight:bold;
+      letter-spacing:0.5px;
+    }
+    .details{font-size:18px;margin:18px 0}
+    .label{font-weight:bold}
+    .stars{color:#f5b301;font-size:22px;vertical-align:middle}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="albumDetails" class="album-title"></div>
+    <div class="flex-row">
+      <div id="musiciansSection" class="musicians-section"></div>
+      <div id="songsSection" class="songs-section"></div>
+    </div>
+    <!-- Back button moved to bottom -->
+        <a href="collection.html" class="back-btn">&larr; Back to Collection</a>
+      <div id="techTableSection" class="tech-table-section"></div>
+  </div>
+  <script>
+            async function loadSongs(album_id, page = 1, perPage = 10) {
+              try {
+                const res = await fetch(`/api/songs?album_id=${encodeURIComponent(album_id)}&page=${page}&perPage=${perPage}`);
+                if (!res.ok) throw new Error('Failed to fetch songs');
+                const j = await res.json();
+                let html = '<table class="songs-table">';
+                html += '<thead><tr><th>No</th><th>Title</th><th>Duration</th></tr></thead><tbody>';
+                for (const s of j.data) {
+                  html += `<tr><td>${s.song_no || ''}</td><td>${s.song_title || ''}</td><td>${s.duration || ''}</td></tr>`;
+                }
+                html += '</tbody></table>';
+                // Pager
+                const lastPage = Math.max(1, Math.ceil(j.total / j.perPage));
+                html += `<div class="pager">`;
+                if (page > 1) html += `<button onclick="loadSongs('${album_id}', 1, ${perPage})">First</button><button onclick="loadSongs('${album_id}', ${page - 1}, ${perPage})">Prev</button>`;
+                html += ` Page ${page} of ${lastPage} `;
+                if (page < lastPage) html += `<button onclick="loadSongs('${album_id}', ${page + 1}, ${perPage})">Next</button><button onclick="loadSongs('${album_id}', ${lastPage}, ${perPage})">Last</button>`;
+                html += `</div>`;
+                document.getElementById('songsSection').innerHTML = html;
+              } catch (e) {
+                document.getElementById('songsSection').textContent = 'Error loading songs.';
+              }
+            }
+        async function loadMusicians(album_id, page = 1, perPage = 10) {
+          try {
+            const res = await fetch(`/api/musicians?album_id=${encodeURIComponent(album_id)}&page=${page}&perPage=${perPage}`);
+            if (!res.ok) throw new Error('Failed to fetch musicians');
+            const j = await res.json();
+            let html = '<table class="musicians-table">';
+            html += '<thead><tr><th>Musician</th><th>Instruments</th></tr></thead><tbody>';
+            for (const m of j.data) {
+              html += `<tr><td><a class="bio-link" href="biography.html?musician_id=${m.musician_id}" target="_blank">${m.musician_name} ${m.musician_family_name}</a></td><td>${m.instruments || ''}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            // Pager
+            const lastPage = Math.max(1, Math.ceil(j.total / j.perPage));
+            html += `<div class="pager">`;
+            if (page > 1) html += `<button onclick="loadMusicians('${album_id}', 1, ${perPage})">First</button><button onclick="loadMusicians('${album_id}', ${page - 1}, ${perPage})">Prev</button>`;
+            html += ` Page ${page} of ${lastPage} `;
+            if (page < lastPage) html += `<button onclick="loadMusicians('${album_id}', ${page + 1}, ${perPage})">Next</button><button onclick="loadMusicians('${album_id}', ${lastPage}, ${perPage})">Last</button>`;
+            html += `</div>`;
+            document.getElementById('musiciansSection').innerHTML = html;
+          } catch (e) {
+            document.getElementById('musiciansSection').textContent = 'Error loading musicians.';
+          }
+        }
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+    function gradingStars(grade) {
+      if (!grade || grade < 1) return '';
+      return ' '.repeat(1) + '★'.repeat(grade);
+    }
+    async function loadDetails() {
+      const album_id = getQueryParam('album_id');
+      if (!album_id) {
+        document.getElementById('albumDetails').textContent = 'No album selected.';
+        return;
+      }
+      loadMusicians(album_id);
+      loadSongs(album_id);
+      try {
+        const res = await fetch(`/api/album/${encodeURIComponent(album_id)}`);
+        if (!res.ok) throw new Error('Failed to fetch album details');
+        const r = await res.json();
+        // Format: Title - artist_name artist_fname grading (as title), then description (next row, no label)
+        const imgHtml = r.picture ? `<img class="album-image" src="/images/${encodeURIComponent(r.picture)}" alt="Album Cover">` : '';
+        let audioHtml = '';
+        let sampleBtn = '';
+        if (r.sample) {
+          audioHtml = `<audio id="audio-player" class="audio-player" src="/samples/${encodeURIComponent(r.sample)}"></audio>`;
+          sampleBtn = `<button class="listen-btn" onclick="(function(){var a=document.getElementById('audio-player');if(a){a.currentTime=0;a.play();}})()">Listen Sample</button>`;
+        }
+        const html = `
+          <div style="margin:0;">${r.title || ''} - ${(r.artist_name || '')} ${(r.artist_fname || '')} <span class="stars">${gradingStars(r.grading)}</span></div>
+          <div style="margin:0;font-size:0.48em;font-weight:normal;text-align:center;color:#888;">${r.description ? r.description : ''}</div>
+          ${imgHtml}
+          ${sampleBtn}
+          ${audioHtml}
+        `;
+        document.getElementById('albumDetails').innerHTML = html;
+
+          // Technical Description Table
+          const pub = r.published_by || '';
+          const rec = [r.city, r.country, r.year].filter(Boolean).join(', ');
+          const tech = r.techDescription || '';
+          const val = r.value ? `${r.value} €` : '';
+          const techTableHtml = `
+            <div class="tech-table-title">Technical description:</div>
+            <table class="tech-table">
+              <tr><td>Published By: ${pub}</td><td>Recorded: ${rec}</td></tr>
+              <tr><td colspan=2>${tech}</td></tr>
+              <tr><td colspan=2>${val}</td></tr>
+            </table>
+          `;
+          document.getElementById('techTableSection').innerHTML = techTableHtml;
+      } catch (e) {
+        document.getElementById('albumDetails').textContent = 'Error loading album details.';
+      }
+    }
+    loadDetails();
+  </script>
+</body>
+</html>

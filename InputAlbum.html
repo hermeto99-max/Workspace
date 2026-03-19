@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>Three Tabs Input</title>
+	<title>Input Album</title>
 	<style>
 		:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
 		.tabs{display:flex;gap:8px;border-bottom:1px solid #ddd;padding:8px}
@@ -19,48 +19,131 @@
 </head>
 <body>
 	<div class="container">
-		<h2>Input Album — Three Tabs</h2>
+		<h2>Input Album</h2>
 		<div class="tabs" role="tablist" aria-label="Album tabs">
-			<button class="tab-btn" role="tab" aria-selected="true" aria-controls="tab1" id="btn-tab1" data-tab="tab1">General</button>
-			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab2" id="btn-tab2" data-tab="tab2">Details</button>
-			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab3" id="btn-tab3" data-tab="tab3">Files</button>
+			<button class="tab-btn" role="tab" aria-selected="true" aria-controls="tab1" id="btn-tab1" data-tab="tab1">Album Info</button>
+			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab2" id="btn-tab2" data-tab="tab2">Musicians</button>
+			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab3" id="btn-tab3" data-tab="tab3">Compositions</button>
+		</div>
+		<div id="homeBtnContainer">
+			<button id="homeBtn">Home</button>
 		</div>
 
 		<section id="tab1" class="panel active" role="tabpanel" aria-labelledby="btn-tab1">
-			<form id="form-tab1">
-				<div class="field">
-					<label for="title">Album Title</label>
-					<input id="title" name="title" type="text" placeholder="My Vacation" />
+			<form id="form-tab1" enctype="multipart/form-data">
+				<div style="display: flex; gap: 24px;">
+					<div style="flex: 1;">
+						<div class="field">
+							<label for="title">Title</label>
+							<input id="title" name="title" type="text" />
+						</div>
+						<div class="field">
+							<label for="artist_name">First Name</label>
+							<input id="artist_name" name="artist_name" type="text" />
+						</div>
+						<div class="field">
+							<label for="artist_fname">Name</label>
+							<input id="artist_fname" name="artist_fname" type="text" />
+						</div>
+						<div class="field">
+							<label for="city">City</label>
+							<input id="city" name="city" type="text" />
+						</div>
+						<div class="field">
+							<label for="country">Country</label>
+							<input id="country" name="country" type="text" />
+						</div>
+						<div class="field">
+							<label for="grading">Grade</label>
+							<input id="grading" name="grading" type="text" />
+						</div>
+						<div class="field">
+							<label for="value">Value</label>
+							<input id="value" name="value" type="text" />
+						</div>
+					</div>
+					<div style="flex: 1;">
+						<div class="field">
+							<label for="album_id">Album Id</label>
+							<input id="album_id" name="album_id" type="text" required />
+						</div>
+						<div class="field">
+							<label for="published_by">Published By</label>
+							<input id="published_by" name="published_by" type="text" />
+						</div>
+						<div class="field">
+							<label for="month">Month</label>
+							<input id="month" name="month" type="text" />
+						</div>
+						<div class="field">
+							<label for="year">Year</label>
+							<input id="year" name="year" type="text" />
+						</div>
+						<div class="field">
+							<label for="filter">Genre</label>
+							<input id="filter" name="filter" type="text" />
+						</div>
+						<div class="field">
+							<label for="sample">Sample (audio file)</label>
+							<input id="sample" name="sample" type="file" accept="audio/*" />
+						</div>
+						<div class="field">
+							<label for="picture">Picture (image file)</label>
+							<input id="picture" name="picture" type="file" accept="image/*" />
+						</div>
+					</div>
 				</div>
 				<div class="field">
-					<label for="desc">Description</label>
-					<textarea id="desc" name="description" rows="4" placeholder="Short description"></textarea>
+					<label for="description">Description</label>
+					<textarea id="description" name="description" maxlength="1000" rows="4" placeholder="Description (up to 1000 characters)"></textarea>
+				</div>
+				<div class="field">
+					<label for="techDescription">Technical Description</label>
+					<textarea id="techDescription" name="techDescription" maxlength="500" rows="3" placeholder="Technical Description (up to 500 characters)"></textarea>
 				</div>
 			</form>
 		</section>
 
 		<section id="tab2" class="panel" role="tabpanel" aria-labelledby="btn-tab2">
 			<form id="form-tab2">
-				<div class="field">
-					<label for="date">Date</label>
-					<input id="date" name="date" type="text" placeholder="2026-02-24" />
-				</div>
-				<div class="field">
-					<label for="location">Location</label>
-					<input id="location" name="location" type="text" placeholder="City, Country" />
+				<div id="musicians-rows">
+					<div class="musician-row" style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 8px;">
+						<div class="field" style="margin-bottom:0;">
+							<label for="musician_name_0">First Name</label>
+							<input id="musician_name_0" name="musician_name[]" type="text" />
+						</div>
+						<div class="field" style="margin-bottom:0;">
+							<label for="musician_family_name_0">Last Name</label>
+							<input id="musician_family_name_0" name="musician_family_name[]" type="text" />
+						</div>
+						<div class="field" style="margin-bottom:0;">
+							<label for="instruments_0">Instruments</label>
+							<input id="instruments_0" name="instruments[]" type="text" />
+						</div>
+						<button type="button" class="add-musician-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1;">+</button>
+					</div>
 				</div>
 			</form>
 		</section>
 
 		<section id="tab3" class="panel" role="tabpanel" aria-labelledby="btn-tab3">
 			<form id="form-tab3">
-				<div class="field">
-					<label for="cover">Cover Image URL</label>
-					<input id="cover" name="cover" type="text" placeholder="https://..." />
-				</div>
-				<div class="field">
-					<label for="files">Attach files (comma-separated)</label>
-					<input id="files" name="files" type="text" placeholder="img1.jpg, img2.jpg" />
+				<div id="compositions-rows">
+					<div class="composition-row" style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 8px;">
+						<div class="field" style="margin-bottom:0; max-width:60px;">
+							<label for="song_number_0">No.</label>
+							<input id="song_number_0" name="song_number[]" type="text" value="1" readonly style="width:50px;" />
+						</div>
+						<div class="field" style="margin-bottom:0; flex:1;">
+							<label for="song_title_0">Title</label>
+							<input id="song_title_0" name="song_title[]" type="text" />
+						</div>
+						<div class="field" style="margin-bottom:0; max-width:120px;">
+							<label for="duration_0">Duration</label>
+							<input id="duration_0" name="duration[]" type="text" placeholder="mm:ss" />
+						</div>
+						<button type="button" class="add-composition-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1;">+</button>
+					</div>
 				</div>
 			</form>
 		</section>
@@ -71,7 +154,30 @@
 		</div>
 	</div>
 
-	<script>
+		<style>
+			#homeBtnContainer {
+				position: fixed;
+				left: 0;
+				bottom: 0;
+				width: 100%;
+				background: rgba(255,255,255,0.95);
+				text-align: center;
+				padding: 16px 0 12px 0;
+				box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+				z-index: 1000;
+			}
+			#homeBtn {
+				padding: 10px 32px;
+				font-size: 18px;
+				background: #0b69ff;
+				color: #fff;
+				border: none;
+				border-radius: 8px;
+				cursor: pointer;
+				box-shadow: 0 2px 8px rgba(11,105,255,0.08);
+			}
+		</style>
+		<script>
 		(function(){
 			const tabs = document.querySelectorAll('.tab-btn');
 			const panels = document.querySelectorAll('.panel');
@@ -84,18 +190,123 @@
 			}
 			tabs.forEach(btn=>btn.addEventListener('click',()=>activate(btn.dataset.tab)));
 
-			document.getElementById('saveBtn').addEventListener('click',()=>{
-				const data = Object.fromEntries(new FormData(document.getElementById('form-tab1')).entries());
-				Object.assign(data, Object.fromEntries(new FormData(document.getElementById('form-tab2')).entries()));
-				Object.assign(data, Object.fromEntries(new FormData(document.getElementById('form-tab3')).entries()));
-				alert('Collected data:\n' + JSON.stringify(data, null, 2));
+			document.getElementById('saveBtn').addEventListener('click', async (e) => {
+				e.preventDefault();
+				const form1 = document.getElementById('form-tab1');
+				const formData = new FormData(form1);
+				// Collect all musicians as arrays
+				const tab2Form = new FormData(document.getElementById('form-tab2'));
+				const tab2 = {
+					musician_name: tab2Form.getAll('musician_name[]'),
+					musician_family_name: tab2Form.getAll('musician_family_name[]'),
+					instruments: tab2Form.getAll('instruments[]')
+				};
+				// Collect all compositions as arrays
+				const tab3Form = new FormData(document.getElementById('form-tab3'));
+				const tab3 = {
+					song_number: tab3Form.getAll('song_number[]'),
+					song_title: tab3Form.getAll('song_title[]'),
+					duration: tab3Form.getAll('duration[]')
+				};
+				formData.append('tab2', JSON.stringify(tab2));
+				formData.append('tab3', JSON.stringify(tab3));
+				try {
+					const resp = await fetch('/api/upload_album_files', {
+						method: 'POST',
+						body: formData
+					});
+					const result = await resp.json();
+					if (resp.ok) {
+						alert('Upload successful!');
+					} else {
+						alert('Upload failed: ' + (result.error || 'Unknown error'));
+					}
+				} catch (err) {
+					alert('Upload error: ' + err);
+				}
 			});
 			document.getElementById('resetBtn').addEventListener('click',()=>{
 				document.getElementById('form-tab1').reset();
 				document.getElementById('form-tab2').reset();
 				document.getElementById('form-tab3').reset();
 			});
-		})();
+				// Home button navigation
+				document.getElementById('homeBtn').addEventListener('click', function(e) {
+					e.preventDefault();
+					window.location.href = 'home.html';
+				});
+				})();
 	</script>
+<script>
+// ...existing code...
+// Add dynamic row logic for Musicians tab
+document.addEventListener('DOMContentLoaded', function() {
+	const musiciansRows = document.getElementById('musicians-rows');
+	musiciansRows.addEventListener('click', function(e) {
+		if (e.target && e.target.classList.contains('add-musician-row')) {
+			const rows = musiciansRows.querySelectorAll('.musician-row');
+			const idx = rows.length;
+			const newRow = document.createElement('div');
+			newRow.className = 'musician-row';
+			newRow.style.display = 'flex';
+			newRow.style.gap = '12px';
+			newRow.style.alignItems = 'flex-end';
+			newRow.style.marginBottom = '8px';
+			newRow.innerHTML = `
+				<div class="field" style="margin-bottom:0;">
+					<input id="musician_name_${idx}" name="musician_name[]" type="text" placeholder="First Name" />
+				</div>
+				<div class="field" style="margin-bottom:0;">
+					<input id="musician_family_name_${idx}" name="musician_family_name[]" type="text" placeholder="Last Name" />
+				</div>
+				<div class="field" style="margin-bottom:0;">
+					<input id="instruments_${idx}" name="instruments[]" type="text" placeholder="Instruments" />
+				</div>
+				<button type="button" class="add-musician-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1;">+</button>
+				<button type="button" class="remove-musician-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1; color:#fff; background:#d32f2f; border:none; border-radius:4px; margin-left:4px;">-</button>
+			`;
+			musiciansRows.appendChild(newRow);
+		}
+		if (e.target && e.target.classList.contains('remove-musician-row')) {
+			const row = e.target.closest('.musician-row');
+			if (row) row.remove();
+		}
+	});
+});
+// Add dynamic row logic for Compositions tab
+document.addEventListener('DOMContentLoaded', function() {
+	const compositionsRows = document.getElementById('compositions-rows');
+	compositionsRows.addEventListener('click', function(e) {
+		if (e.target && e.target.classList.contains('add-composition-row')) {
+			const rows = compositionsRows.querySelectorAll('.composition-row');
+			const idx = rows.length;
+			const newRow = document.createElement('div');
+			newRow.className = 'composition-row';
+			newRow.style.display = 'flex';
+			newRow.style.gap = '12px';
+			newRow.style.alignItems = 'flex-end';
+			newRow.style.marginBottom = '8px';
+			newRow.innerHTML = `
+				<div class="field" style="margin-bottom:0; max-width:60px;">
+					<input id="song_number_${idx}" name="song_number[]" type="text" value="${idx+1}" readonly style="width:50px;" />
+				</div>
+				<div class="field" style="margin-bottom:0; flex:1;">
+					<input id="song_title_${idx}" name="song_title[]" type="text" placeholder="Title" />
+				</div>
+				<div class="field" style="margin-bottom:0; max-width:120px;">
+					<input id="duration_${idx}" name="duration[]" type="text" placeholder="Duration (mm:ss)" />
+				</div>
+				<button type="button" class="add-composition-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1;">+</button>
+				<button type="button" class="remove-composition-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1; color:#fff; background:#d32f2f; border:none; border-radius:4px; margin-left:4px;">-</button>
+			`;
+			compositionsRows.appendChild(newRow);
+		}
+		if (e.target && e.target.classList.contains('remove-composition-row')) {
+			const row = e.target.closest('.composition-row');
+			if (row) row.remove();
+		}
+	});
+});
+</script>
 </body>
 </html>
