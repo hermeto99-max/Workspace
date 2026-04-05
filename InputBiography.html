@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Biography</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            margin-top: 60px;
+            padding: 40px 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 350px;
+        }
+        .search-row {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            flex: 1;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #searchResult {
+            margin-top: 20px;
+            font-size: 1rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-row">
+            <input type="text" id="musicianName" placeholder="Enter Musician Name and Family Name">
+            <button onclick="searchMusician()">Search</button>
+        </div>
+        <div id="searchResult"></div>
+    </div>
+    <script>
+        function searchMusician() {
+            const name = document.getElementById('musicianName').value.trim();
+            const resultDiv = document.getElementById('searchResult');
+            if (!name) {
+                resultDiv.textContent = 'Please enter a name.';
+                return;
+            }
+                fetch(`/search-musician?name=${encodeURIComponent(name)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.musician) {
+                        // Use correct property for family name
+                        const familyName = data.musician.musician_family_name || data.musician.musician_family || '';
+                        resultDiv.innerHTML = `
+                            <div>Found: ${data.musician.musician_name} ${familyName}</div>
+                            <form id="bioForm" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+                                <label for="musicianPicture">Musician Picture</label>
+                                <input type="file" id="musicianPicture" name="musicianPicture" accept="image/*">
+                                <label for="musicianBiography">Musician Biography</label>
+                                <textarea id="musicianBiography" name="musicianBiography" rows="8" maxlength="65535" style="resize:vertical; padding:10px; font-size:1rem; border-radius:5px; border:1px solid #ccc; min-height:120px;"></textarea>
+                                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                                    <button type="button" onclick="saveBiography()" style="background:#28a745;">Save</button>
+                                    <button type="button" onclick="location.href='home.html'" style="background:#6c757d;">Home</button>
+                                </div>
+                            </form>
+                        `;
+                        setTimeout(() => {
+                            const bio = document.getElementById('musicianBiography');
+                            if (bio) bio.focus();
+                        }, 100);
+                    } else {
+                        resultDiv.textContent = 'No musician found.';
+                    }
+                })
+                .catch(() => {
+                    resultDiv.textContent = 'Error searching musician.';
+                });
+        }
+        
+            // Save biography handler (to be implemented)
+            function saveBiography() {
+                const pictureInput = document.getElementById('musicianPicture');
+                const bioInput = document.getElementById('musicianBiography');
+                const name = document.getElementById('musicianName').value.trim();
+                if (!bioInput.value.trim()) {
+                    alert('Please enter a biography.');
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('biography', bioInput.value.trim());
+                if (pictureInput.files[0]) {
+                    formData.append('picture', pictureInput.files[0]);
+                }
+                fetch('/save-musician-biography', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Biography saved successfully!');
+                    } else {
+                        alert('Failed to save biography.');
+                    }
+                })
+                .catch(() => {
+                    alert('Error saving biography.');
+                });
+            }
+    </script>
+</body>
+</html>

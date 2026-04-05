@@ -252,6 +252,74 @@ app.get('/api/album/:album_id', async (req, res) => {
   }
 });
 
+
+// Delete album and related musicians and songs
+app.delete('/api/album/:album_id', async (req, res) => {
+  const album_id = req.params.album_id;
+  let conn;
+  try {
+    console.log('DELETE endpoint called for album_id:', album_id);
+    conn = await mysql.createConnection(config);
+    // Disable safe updates
+    await conn.query('SET SQL_SAFE_UPDATES = 0');
+    // Delete songs first
+    const [songResult] = await conn.query('DELETE FROM songs WHERE ALBUM_ID = ?', [album_id]);
+    console.log('Songs deleted affectedRows:', songResult.affectedRows);
+    // Delete musicians for this album
+    const [musicianResult] = await conn.query('DELETE FROM musicians WHERE ALBUM_ID = ?', [album_id]);
+    console.log('Musicians deleted affectedRows:', musicianResult.affectedRows);
+    // Delete album
+    const [albumResult] = await conn.query('DELETE FROM albums WHERE album_id = ?', [album_id]);
+    console.log('Albums deleted affectedRows:', albumResult.affectedRows);
+    // Re-enable safe updates
+    await conn.query('SET SQL_SAFE_UPDATES = 1');
+    if (albumResult.affectedRows === 0) {
+      res.status(404).json({ error: 'Album not found' });
+      return;
+    }
+    res.json({ message: 'Album and related data deleted' });
+  } catch (err) {
+    console.error('API DELETE /api/album/:album_id error:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (conn) await conn.end();
+  }
+});
+
+
+// Search musician by name and family name (expects full name in one string)
+app.get('/search-musician', async (req, res) => {
+  const name = (req.query.name || '').trim();
+  if (!name) {
+    return res.json({ success: false, error: 'No name provided' });
+  }
+  // Try to split into name and family name (assume last word is family name)
+  const parts = name.split(' ');
+  if (parts.length < 2) {
+    return res.json({ success: false, error: 'Please provide both name and family name' });
+  }
+  const musician_family = parts.pop();
+  const musician_name = parts.join(' ');
+  let conn;
+  try {
+    conn = await mysql.createConnection(config);
+    const [rows] = await conn.query(
+      'SELECT * FROM musicians WHERE musician_name = ? AND musician_family_name = ?',
+      [musician_name, musician_family]
+    );
+    if (rows.length > 0) {
+      return res.json({ success: true, musician: rows[0] });
+    } else {
+      return res.json({ success: false, error: 'No musician found' });
+    }
+  } catch (err) {
+    console.error('/search-musician error:', err && err.message ? err.message : err);
+    return res.status(500).json({ success: false, error: 'Database error' });
+  } finally {
+    if (conn) await conn.end();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });

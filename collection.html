@@ -177,7 +177,7 @@
             //sprincip srart
             actionTd.innerHTML = `
               <button style="margin-right:4px;" onclick="window.location.href='displayDetails.html?album_id=${encodeURIComponent(r.album_id)}'">Display Details</button>
-              <button style="margin-right:4px;" onclick="alert('Delete Album: ${r.title.replace(/'/g, "\\'")}')">Delete Album</button>
+              <button style="margin-right:4px;" onclick="deleteAlbum('${r.album_id}', '${r.title.replace(/'/g, "\\'")}')">Delete Album</button>
               <button onclick="alert('Modify Album: ${r.title.replace(/'/g, "\\'")}')">Modify Album</button>
             `;
             //sprincip end
@@ -189,7 +189,27 @@
         }
       }
 
+
       function cell(v){ const td=document.createElement('td'); td.textContent = v==null? '': v; return td }
+
+      // Delete album by album_id
+      async function deleteAlbum(album_id, title) {
+        if (!confirm(`Are you sure you want to delete the album: ${title}?`)) return;
+        try {
+          const res = await fetch(`/api/album/${encodeURIComponent(album_id)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (res.ok) {
+            alert('Album deleted successfully.');
+            load(); // Refresh the list
+          } else {
+            alert('Error deleting album: ' + (data.error || 'Unknown error'));
+          }
+        } catch (err) {
+          alert('Error deleting album: ' + err.message);
+        }
+      }
+      // Expose deleteAlbum globally
+      window.deleteAlbum = deleteAlbum;
 
       // Ensure search is cleared on page load (show all records)
       search = null;
