@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Musician Biography</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7fafc;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px #0001;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: row;
+      gap: 40px;
+      align-items: flex-start;
+    }
+    .bio-image {
+      width: 260px;
+      height: 260px;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #0001;
+      background: #f0f0f0;
+      display: block;
+    }
+    .bio-text {
+      flex: 1 1 0;
+      font-size: 1.1em;
+      color: #222;
+      white-space: pre-line;
+    }
+    .back-btn {
+      display: block;
+      margin: 32px auto 0 auto;
+      padding: 12px 32px;
+      font-size: 1.1em;
+      border-radius: 6px;
+      border: none;
+      background: #2d7be5;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-align: center;
+      text-decoration: none;
+      width: fit-content;
+    }
+    .back-btn:hover {
+      background: #195ca7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="bioContainer">
+    <!-- Content will be loaded here -->
+  </div>
+  <a href="displayDetails.html" class="back-btn">&larr; Back to Album Details</a>
+  <script>
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+    async function loadBiography() {
+      const musician_id = getQueryParam('musician_id');
+      if (!musician_id) {
+        document.getElementById('bioContainer').innerHTML = '<div>No musician selected.</div>';
+        return;
+      }
+      try {
+        const res = await fetch(`/api/biography?musician_id=${encodeURIComponent(musician_id)}`);
+        if (!res.ok) throw new Error('Failed to fetch biography');
+        const bio = await res.json();
+        if (!bio.musician_biography || bio.musician_biography.trim() === '') {
+          // Redirect to inputBiography.html if biography is empty
+          window.location.href = `InputBiography.html?musician_id=${musician_id}`;
+          return;
+        }
+        const imgHtml = bio.musician_picture ? `<img class="bio-image" src="/images/${encodeURIComponent(bio.musician_picture)}" alt="Musician Picture">` : `<div class="bio-image" style="display:flex;align-items:center;justify-content:center;color:#aaa;">No Image</div>`;
+        const textHtml = `<div class="bio-text">${bio.musician_biography}</div>`;
+        document.getElementById('bioContainer').innerHTML = imgHtml + textHtml;
+      } catch (e) {
+        document.getElementById('bioContainer').innerHTML = '<div>Error loading biography.</div>';
+      }
+    }
+    loadBiography();
+  </script>
+</body>
+</html>

@@ -24,7 +24,9 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            min-width: 350px;
+            min-width: 900px;
+            max-width: 1200px;
+            width: 100%;
         }
         .search-row {
             display: flex;
@@ -85,7 +87,7 @@
                                 <label for="musicianPicture">Musician Picture</label>
                                 <input type="file" id="musicianPicture" name="musicianPicture" accept="image/*">
                                 <label for="musicianBiography">Musician Biography</label>
-                                <textarea id="musicianBiography" name="musicianBiography" rows="8" maxlength="65535" style="resize:vertical; padding:10px; font-size:1rem; border-radius:5px; border:1px solid #ccc; min-height:120px;"></textarea>
+                                <textarea id="musicianBiography" name="musicianBiography" rows="12" maxlength="65535" style="resize:vertical; padding:10px; font-size:1rem; border-radius:5px; border:1px solid #ccc; min-height:120px; min-width:850px; max-width:1150px; width:100%;"></textarea>
                                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                                     <button type="button" onclick="saveBiography()" style="background:#28a745;">Save</button>
                                     <button type="button" onclick="location.href='home.html'" style="background:#6c757d;">Home</button>

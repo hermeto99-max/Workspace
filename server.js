@@ -1,4 +1,3 @@
-// --- Module imports and app setup ---
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
@@ -315,6 +314,96 @@ app.get('/search-musician', async (req, res) => {
   } catch (err) {
     console.error('/search-musician error:', err && err.message ? err.message : err);
     return res.status(500).json({ success: false, error: 'Database error' });
+  } finally {
+    if (conn) await conn.end();
+  }
+});
+
+// Endpoint to save musician biography and picture
+// Save musician biography and picture with correct field names and upsert logic
+app.post('/save-musician-biography', upload.single('picture'), async (req, res) => {
+  const name = (req.body.name || '').trim();
+  const musician_biography = (req.body.biography || '').trim();
+  const musician_picture = req.file ? req.file.filename : null;
+  if (!name || !musician_biography) {
+    return res.json({ success: false, error: 'Name and biography are required.' });
+  }
+  // Split name into musician_name and musician_family_name
+  const parts = name.split(' ');
+  if (parts.length < 2) {
+    return res.json({ success: false, error: 'Please provide both name and family name' });
+  }
+  const musician_family = parts.pop();
+  const musician_name = parts.join(' ');
+  let conn;
+  try {
+    conn = await mysql.createConnection(config);
+    // Find musician_id
+    const [rows] = await conn.query(
+      'SELECT musician_id FROM musicians WHERE musician_name = ? AND musician_family_name = ?',
+      [musician_name, musician_family]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: false, error: 'Musician not found.' });
+    }
+    const musician_id = rows[0].musician_id;
+    // Check if biography record exists for this musician_id
+    const [bioRows] = await conn.query(
+      'SELECT musician_id FROM biography WHERE musician_id = ?',
+      [musician_id]
+    );
+    if (bioRows.length > 0) {
+      // Update existing record
+      await conn.query(
+        'UPDATE biography SET musician_picture = ?, musician_biography = ? WHERE musician_id = ?',
+        [musician_picture, musician_biography, musician_id]
+      );
+    } else {
+      // Insert new record
+      await conn.query(
+        'INSERT INTO biography (musician_id, musician_picture, musician_biography) VALUES (?, ?, ?)',
+        [musician_id, musician_picture, musician_biography]
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    // Enhanced error logging for debugging
+    console.error('/save-musician-biography error:', err);
+    if (err && err.stack) {
+      console.error('Stack trace:', err.stack);
+    }
+    if (conn) {
+      try { await conn.end(); } catch (e) { console.error('Error closing connection:', e); }
+    }
+    res.status(500).json({ success: false, error: err && err.message ? err.message : 'Database error' });
+    return;
+  }
+  finally {
+    // Connection already closed in catch block if error
+    if (conn) try { await conn.end(); } catch (e) { console.error('Error closing connection:', e); }
+  }
+});
+
+// Endpoint to get musician biography by musician_id
+app.get('/api/biography', async (req, res) => {
+  const musician_id = req.query.musician_id;
+  if (!musician_id) {
+    return res.status(400).json({ error: 'musician_id required' });
+  }
+  let conn;
+  try {
+    conn = await mysql.createConnection(config);
+    const [rows] = await conn.query(
+      'SELECT musician_biography, musician_picture FROM biography WHERE musician_id = ?',
+      [musician_id]
+    );
+    if (rows.length === 0) {
+      return res.json({ musician_biography: '', musician_picture: null });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('/api/biography error:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Database error' });
   } finally {
     if (conn) await conn.end();
   }
