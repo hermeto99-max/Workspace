@@ -62,27 +62,37 @@
 <body>
     <div class="container">
         <div class="search-row">
-            <input type="text" id="musicianName" placeholder="Enter Musician Name and Family Name">
+            <input type="text" id="musicianFirstName" placeholder="Enter Musician First Name">
+            <input type="text" id="musicianFamilyName" placeholder="Enter Musician Family Name">
             <button onclick="searchMusician()">Search</button>
         </div>
         <div id="searchResult"></div>
     </div>
     <script>
         function searchMusician() {
-            const name = document.getElementById('musicianName').value.trim();
+            const firstName = document.getElementById('musicianFirstName').value.trim();
+            const familyName = document.getElementById('musicianFamilyName').value.trim();
             const resultDiv = document.getElementById('searchResult');
-            if (!name) {
-                resultDiv.textContent = 'Please enter a name.';
+            if (!firstName && !familyName) {
+                resultDiv.textContent = 'Please enter at least a family name.';
                 return;
             }
-                fetch(`/search-musician?name=${encodeURIComponent(name)}`)
+            let url = '';
+            if (firstName && familyName) {
+                url = `/search-musician?firstName=${encodeURIComponent(firstName)}&familyName=${encodeURIComponent(familyName)}`;
+            } else if (!firstName && familyName) {
+                url = `/search-musician?familyName=${encodeURIComponent(familyName)}`;
+            } else {
+                resultDiv.textContent = 'Please enter at least a family name.';
+                return;
+            }
+            fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && data.musician) {
-                        // Use correct property for family name
-                        const familyName = data.musician.musician_family_name || data.musician.musician_family || '';
+                        const family = data.musician.musician_family_name || data.musician.musician_family || '';
                         resultDiv.innerHTML = `
-                            <div>Found: ${data.musician.musician_name} ${familyName}</div>
+                            <div>Found: ${data.musician.musician_name ? data.musician.musician_name : ''} ${family}</div>
                             <form id="bioForm" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
                                 <label for="musicianPicture">Musician Picture</label>
                                 <input type="file" id="musicianPicture" name="musicianPicture" accept="image/*">
@@ -98,6 +108,8 @@
                             const bio = document.getElementById('musicianBiography');
                             if (bio) bio.focus();
                         }, 100);
+                    } else if (data.error === 'Multiple musicians found') {
+                        resultDiv.textContent = 'Multiple musicians found.';
                     } else {
                         resultDiv.textContent = 'No musician found.';
                     }
@@ -111,13 +123,15 @@
             function saveBiography() {
                 const pictureInput = document.getElementById('musicianPicture');
                 const bioInput = document.getElementById('musicianBiography');
-                const name = document.getElementById('musicianName').value.trim();
+                const firstName = document.getElementById('musicianFirstName').value.trim();
+                const familyName = document.getElementById('musicianFamilyName').value.trim();
                 if (!bioInput.value.trim()) {
                     alert('Please enter a biography.');
                     return;
                 }
                 const formData = new FormData();
-                formData.append('name', name);
+                formData.append('firstName', firstName);
+                formData.append('familyName', familyName);
                 formData.append('biography', bioInput.value.trim());
                 if (pictureInput.files[0]) {
                     formData.append('picture', pictureInput.files[0]);

@@ -18,25 +18,45 @@
       border-radius: 10px;
       box-shadow: 0 2px 8px #0001;
       padding: 32px 24px;
-      display: flex;
-      flex-direction: row;
-      gap: 40px;
-      align-items: flex-start;
+      overflow: hidden;
     }
     .bio-image {
       width: 260px;
-      height: 260px;
-      object-fit: cover;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
       border-radius: 8px;
       box-shadow: 0 2px 8px #0001;
       background: #f0f0f0;
       display: block;
+      margin: 0 24px 16px 0;
+      float: left;
     }
     .bio-text {
-      flex: 1 1 0;
       font-size: 1.1em;
       color: #222;
       white-space: pre-line;
+      word-break: break-word;
+      text-align: left;
+      line-height: 1.6;
+    }
+    @media (max-width: 700px) {
+      .container {
+        padding: 16px 6px;
+      }
+      .bio-image {
+        width: 100%;
+        height: auto;
+        max-width: 320px;
+        aspect-ratio: 1 / 1;
+        object-fit: contain;
+        margin: 0 auto 20px auto;
+        float: none;
+      }
+      .bio-text {
+        width: 100%;
+        min-width: 0;
+      }
     }
     .back-btn {
       display: block;
@@ -62,11 +82,26 @@
   <div class="container" id="bioContainer">
     <!-- Content will be loaded here -->
   </div>
-  <a href="displayDetails.html" class="back-btn">&larr; Back to Album Details</a>
+  <a id="backBtn" href="displayDetails.html" class="back-btn">&larr; Back to Album Details</a>
   <script>
     function getQueryParam(name) {
       const url = new URL(window.location.href);
       return url.searchParams.get(name);
+    }
+    function setBackButton() {
+      // Try to go back if possible, otherwise fallback to album details
+      const album_id = getQueryParam('album_id');
+      const backBtn = document.getElementById('backBtn');
+      backBtn.onclick = function(e) {
+        e.preventDefault();
+        if (document.referrer && document.referrer.includes('displayDetails.html') && window.history.length > 1) {
+          window.history.back();
+        } else if (album_id) {
+          window.location.href = `displayDetails.html?album_id=${encodeURIComponent(album_id)}`;
+        } else {
+          window.location.href = 'displayDetails.html';
+        }
+      };
     }
     async function loadBiography() {
       const musician_id = getQueryParam('musician_id');
@@ -83,13 +118,14 @@
           window.location.href = `InputBiography.html?musician_id=${musician_id}`;
           return;
         }
-        const imgHtml = bio.musician_picture ? `<img class="bio-image" src="/images/${encodeURIComponent(bio.musician_picture)}" alt="Musician Picture">` : `<div class="bio-image" style="display:flex;align-items:center;justify-content:center;color:#aaa;">No Image</div>`;
-        const textHtml = `<div class="bio-text">${bio.musician_biography}</div>`;
+        const imgHtml = bio.musician_picture ? `<img class=\"bio-image\" src=\"/images/${encodeURIComponent(bio.musician_picture)}\" alt=\"Musician Picture\">` : `<div class=\"bio-image\" style=\"display:flex;align-items:center;justify-content:center;color:#aaa;\">No Image</div>`;
+        const textHtml = `<div class=\"bio-text\">${bio.musician_biography}</div>`;
         document.getElementById('bioContainer').innerHTML = imgHtml + textHtml;
       } catch (e) {
         document.getElementById('bioContainer').innerHTML = '<div>Error loading biography.</div>';
       }
     }
+    setBackButton();
     loadBiography();
   </script>
 </body>

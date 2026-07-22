@@ -188,8 +188,9 @@
             const j = await res.json();
             let html = '<table class="musicians-table">';
             html += '<thead><tr><th>Musician</th><th>Instruments</th></tr></thead><tbody>';
+            const album_id_param = encodeURIComponent(album_id);
             for (const m of j.data) {
-              html += `<tr><td><a class="bio-link" href="biography.html?musician_id=${m.musician_id}" target="_blank">${m.musician_name} ${m.musician_family_name}</a></td><td>${m.instruments || ''}</td></tr>`;
+              html += `<tr><td><a class="bio-link" href="biography.html?musician_id=${m.musician_id}&album_id=${album_id_param}" target="_blank">${m.musician_name} ${m.musician_family_name}</a></td><td>${m.instruments || ''}</td></tr>`;
             }
             html += '</tbody></table>';
             // Pager

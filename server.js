@@ -190,7 +190,11 @@ app.get('/api/albums', async (req, res) => {
   const perPage = Math.max(1, Number(req.query.perPage) || 10);
   const page = Math.max(1, Number(req.query.page) || 1);
   const offset = (page - 1) * perPage;
-  const orderBy = req.query.orderBy === 'year' ? 'YEAR' : req.query.orderBy === 'author' ? 'artist_name, artist_fname' : 'YEAR';
+  const orderBy = req.query.orderBy === 'year'
+    ? 'YEAR, album_id'
+    : req.query.orderBy === 'author'
+      ? 'artist_name, artist_fname, album_id'
+      : 'YEAR, album_id';
   const orderDir = req.query.orderDir === 'desc' ? 'DESC' : 'ASC';
   const search = req.query.search ? req.query.search.trim() : '';
 
@@ -288,28 +292,57 @@ app.delete('/api/album/:album_id', async (req, res) => {
 
 // Search musician by name and family name (expects full name in one string)
 app.get('/search-musician', async (req, res) => {
-  const name = (req.query.name || '').trim();
-  if (!name) {
-    return res.json({ success: false, error: 'No name provided' });
+    const musician_name = (req.query.firstName || '').trim();
+    const musician_family_name = (req.query.familyName || '').trim();
+    console.log('DEBUG /search-musician:', { musician_name, musician_family_name });
+  if (!musician_family_name) {
+    return res.json({ success: false, error: 'Please provide at least a family name' });
   }
-  // Try to split into name and family name (assume last word is family name)
-  const parts = name.split(' ');
-  if (parts.length < 2) {
-    return res.json({ success: false, error: 'Please provide both name and family name' });
-  }
-  const musician_family = parts.pop();
-  const musician_name = parts.join(' ');
   let conn;
   try {
     conn = await mysql.createConnection(config);
-    const [rows] = await conn.query(
-      'SELECT * FROM musicians WHERE musician_name = ? AND musician_family_name = ?',
-      [musician_name, musician_family]
-    );
-    if (rows.length > 0) {
-      return res.json({ success: true, musician: rows[0] });
-    } else {
-      return res.json({ success: false, error: 'No musician found' });
+    let rows = [];
+    if (musician_family_name) {
+      if (musician_name === '') {
+        // Search for musicians with empty or NULL first name and given family name
+        [rows] = await conn.query(
+          'SELECT * FROM musicians WHERE (TRIM(musician_name) = "" OR musician_name IS NULL) AND musician_family_name = ?',
+          [musician_family_name]
+        );
+        console.log('DEBUG empty first name query result count:', rows.length, rows);
+        if (rows.length === 1) {
+          return res.json({ success: true, musician: rows[0] });
+        } else if (rows.length > 1) {
+          // Check if all musician_id are the same
+          const uniqueIds = [...new Set(rows.map(r => r.musician_id))];
+          if (uniqueIds.length === 1) {
+            return res.json({ success: true, musician: rows[0] });
+          } else {
+            return res.json({ success: false, error: 'Multiple musicians found' });
+          }
+        } else {
+          return res.json({ success: false, error: 'No musician found' });
+        }
+      } else {
+        // Search for exact match
+        [rows] = await conn.query(
+          'SELECT * FROM musicians WHERE musician_name = ? AND musician_family_name = ?',
+          [musician_name, musician_family_name]
+        );
+        if (rows.length === 1) {
+          return res.json({ success: true, musician: rows[0] });
+        } else if (rows.length > 1) {
+          // Check if all musician_id are the same
+          const uniqueIds = [...new Set(rows.map(r => r.musician_id))];
+          if (uniqueIds.length === 1) {
+            return res.json({ success: true, musician: rows[0] });
+          } else {
+            return res.json({ success: false, error: 'Multiple musicians found' });
+          }
+        } else {
+          return res.json({ success: false, error: 'No musician found' });
+        }
+      }
     }
   } catch (err) {
     console.error('/search-musician error:', err && err.message ? err.message : err);
@@ -322,27 +355,29 @@ app.get('/search-musician', async (req, res) => {
 // Endpoint to save musician biography and picture
 // Save musician biography and picture with correct field names and upsert logic
 app.post('/save-musician-biography', upload.single('picture'), async (req, res) => {
-  const name = (req.body.name || '').trim();
+  const musician_name = (req.body.firstName || '').trim();
+  const musician_family_name = (req.body.familyName || '').trim();
   const musician_biography = (req.body.biography || '').trim();
   const musician_picture = req.file ? req.file.filename : null;
-  if (!name || !musician_biography) {
-    return res.json({ success: false, error: 'Name and biography are required.' });
+  if (!musician_family_name || !musician_biography) {
+    return res.json({ success: false, error: 'Family name and biography are required.' });
   }
-  // Split name into musician_name and musician_family_name
-  const parts = name.split(' ');
-  if (parts.length < 2) {
-    return res.json({ success: false, error: 'Please provide both name and family name' });
-  }
-  const musician_family = parts.pop();
-  const musician_name = parts.join(' ');
   let conn;
   try {
     conn = await mysql.createConnection(config);
     // Find musician_id
-    const [rows] = await conn.query(
-      'SELECT musician_id FROM musicians WHERE musician_name = ? AND musician_family_name = ?',
-      [musician_name, musician_family]
-    );
+    let rows;
+    if (musician_name) {
+      [rows] = await conn.query(
+        'SELECT musician_id FROM musicians WHERE musician_name = ? AND musician_family_name = ?',
+        [musician_name, musician_family_name]
+      );
+    } else {
+      [rows] = await conn.query(
+        'SELECT musician_id FROM musicians WHERE musician_family_name = ? AND (musician_name IS NULL OR musician_name = "")',
+        [musician_family_name]
+      );
+    }
     if (rows.length === 0) {
       return res.json({ success: false, error: 'Musician not found.' });
     }
