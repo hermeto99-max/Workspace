@@ -178,7 +178,7 @@
             actionTd.innerHTML = `
               <button style="margin-right:4px;" onclick="window.location.href='displayDetails.html?album_id=${encodeURIComponent(r.album_id)}'">Display Details</button>
               <button style="margin-right:4px;" onclick="deleteAlbum('${r.album_id}', '${r.title.replace(/'/g, "\\'")}')">Delete Album</button>
-              <button onclick="alert('Modify Album: ${r.title.replace(/'/g, "\\'")}')">Modify Album</button>
+              <button onclick="window.location.href='modifyAlbum.html?album_id=${encodeURIComponent(r.album_id)}'">Modify Album</button>
             `;
             //sprincip end
             tr.appendChild(actionTd);

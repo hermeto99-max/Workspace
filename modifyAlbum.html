@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>Input Album</title>
+	<title>Modify Album</title>
 	<style>
 		:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
 		.tabs{display:flex;gap:8px;border-bottom:1px solid #ddd;padding:8px}
@@ -20,7 +20,7 @@
 </head>
 <body>
 	<div class="container">
-		<h2>Input Album</h2>
+		<h2>Modify Album</h2>
 		<div class="tabs" role="tablist" aria-label="Album tabs">
 			<button class="tab-btn" role="tab" aria-selected="true" aria-controls="tab1" id="btn-tab1" data-tab="tab1">Album Info</button>
 			<button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab2" id="btn-tab2" data-tab="tab2">Musicians</button>
@@ -66,7 +66,7 @@
 					<div style="flex: 1;">
 						<div class="field">
 							<label for="album_id">Album Id</label>
-							<input id="album_id" name="album_id" type="text" required />
+							<input id="album_id" name="album_id" type="text" required readonly />
 						</div>
 						<div class="field">
 							<label for="published_by">Published By</label>
@@ -180,8 +180,12 @@
 		</style>
 		<script>
 		(function(){
+			const albumIdFromUrl = new URLSearchParams(window.location.search).get('album_id');
 			const tabs = document.querySelectorAll('.tab-btn');
 			const panels = document.querySelectorAll('.panel');
+			const musiciansRows = document.getElementById('musicians-rows');
+			const compositionsRows = document.getElementById('compositions-rows');
+
 			function activate(tabId){
 				tabs.forEach(b=>{
 					const sel = b.dataset.tab===tabId;
@@ -191,8 +195,133 @@
 			}
 			tabs.forEach(btn=>btn.addEventListener('click',()=>activate(btn.dataset.tab)));
 
+			function setValue(id, value) {
+				const el = document.getElementById(id);
+				if (el) el.value = value == null ? '' : value;
+			}
+
+			function ensureMusicianRows(count) {
+				while (musiciansRows.querySelectorAll('.musician-row').length < count) {
+					const idx = musiciansRows.querySelectorAll('.musician-row').length;
+					const newRow = document.createElement('div');
+					newRow.className = 'musician-row';
+					newRow.style.display = 'flex';
+					newRow.style.gap = '12px';
+					newRow.style.alignItems = 'flex-end';
+					newRow.style.marginBottom = '8px';
+					newRow.innerHTML = `
+						<div class="field" style="margin-bottom:0;">
+							<input id="musician_name_${idx}" name="musician_name[]" type="text" placeholder="First Name" />
+						</div>
+						<div class="field" style="margin-bottom:0;">
+							<input id="musician_family_name_${idx}" name="musician_family_name[]" type="text" placeholder="Last Name" />
+						</div>
+						<div class="field" style="margin-bottom:0;">
+							<input id="instruments_${idx}" name="instruments[]" type="text" placeholder="Instruments" />
+						</div>
+						<button type="button" class="add-musician-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1;">+</button>
+						<button type="button" class="remove-musician-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1; color:#fff; background:#d32f2f; border:none; border-radius:4px; margin-left:4px;">-</button>
+					`;
+					musiciansRows.appendChild(newRow);
+				}
+			}
+
+			function ensureCompositionRows(count) {
+				while (compositionsRows.querySelectorAll('.composition-row').length < count) {
+					const idx = compositionsRows.querySelectorAll('.composition-row').length;
+					const newRow = document.createElement('div');
+					newRow.className = 'composition-row';
+					newRow.style.display = 'flex';
+					newRow.style.gap = '12px';
+					newRow.style.alignItems = 'flex-end';
+					newRow.style.marginBottom = '8px';
+					newRow.innerHTML = `
+						<div class="field" style="margin-bottom:0; max-width:60px;">
+							<input id="song_number_${idx}" name="song_number[]" type="text" value="${idx + 1}" readonly style="width:50px;" />
+						</div>
+						<div class="field" style="margin-bottom:0; flex:1;">
+							<input id="song_title_${idx}" name="song_title[]" type="text" placeholder="Title" />
+						</div>
+						<div class="field" style="margin-bottom:0; max-width:120px;">
+							<input id="duration_${idx}" name="duration[]" type="text" placeholder="Duration (mm:ss)" />
+						</div>
+						<button type="button" class="add-composition-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1;">+</button>
+						<button type="button" class="remove-composition-row" style="height:32px;font-size:20px;padding:0 10px;line-height:1; color:#fff; background:#d32f2f; border:none; border-radius:4px; margin-left:4px;">-</button>
+					`;
+					compositionsRows.appendChild(newRow);
+				}
+			}
+
+			function resetRowContainers() {
+				const firstMusicianRow = musiciansRows.querySelector('.musician-row');
+				const firstCompositionRow = compositionsRows.querySelector('.composition-row');
+				if (firstMusicianRow) {
+					musiciansRows.innerHTML = '';
+					musiciansRows.appendChild(firstMusicianRow.cloneNode(true));
+				}
+				if (firstCompositionRow) {
+					compositionsRows.innerHTML = '';
+					compositionsRows.appendChild(firstCompositionRow.cloneNode(true));
+				}
+			}
+
+			async function loadAlbumForEdit() {
+				if (!albumIdFromUrl) {
+					alert('Missing album_id in URL.');
+					window.location.href = 'collection.html';
+					return;
+				}
+				try {
+					const resp = await fetch(`/api/album-edit/${encodeURIComponent(albumIdFromUrl)}`);
+					const result = await resp.json();
+					if (!resp.ok) {
+						alert('Failed to load album: ' + (result.error || 'Unknown error'));
+						window.location.href = 'collection.html';
+						return;
+					}
+					const album = result.album || {};
+					resetRowContainers();
+					setValue('album_id', album.album_id);
+					setValue('title', album.title);
+					setValue('artist_name', album.artist_name);
+					setValue('artist_fname', album.artist_fname);
+					setValue('city', album.city);
+					setValue('country', album.country);
+					setValue('grading', album.grading);
+					setValue('value', album.value);
+					setValue('published_by', album.published_by);
+					setValue('month', album.month);
+					setValue('year', album.year);
+					setValue('filter', album.filter);
+					setValue('description', album.description);
+					setValue('techDescription', album.techDescription);
+
+					const musicians = (result.musicians && result.musicians.length > 0) ? result.musicians : [{}];
+					ensureMusicianRows(musicians.length);
+					musicians.forEach((m, i) => {
+						setValue(`musician_name_${i}`, m.musician_name);
+						setValue(`musician_family_name_${i}`, m.musician_family_name);
+						setValue(`instruments_${i}`, m.instruments);
+					});
+
+					const songs = (result.songs && result.songs.length > 0) ? result.songs : [{}];
+					ensureCompositionRows(songs.length);
+					songs.forEach((s, i) => {
+						setValue(`song_number_${i}`, s.song_no || (i + 1));
+						setValue(`song_title_${i}`, s.song_title);
+						setValue(`duration_${i}`, s.duration);
+					});
+				} catch (err) {
+					alert('Error loading album: ' + err.message);
+				}
+			}
+
 			document.getElementById('saveBtn').addEventListener('click', async (e) => {
 				e.preventDefault();
+				if (!albumIdFromUrl) {
+					alert('Missing album_id in URL.');
+					return;
+				}
 				const form1 = document.getElementById('form-tab1');
 				const formData = new FormData(form1);
 				// Collect all musicians as arrays
@@ -212,30 +341,30 @@
 				formData.append('tab2', JSON.stringify(tab2));
 				formData.append('tab3', JSON.stringify(tab3));
 				try {
-					const resp = await fetch('/api/upload_album_files', {
-						method: 'POST',
+					const resp = await fetch(`/api/album/${encodeURIComponent(albumIdFromUrl)}`, {
+						method: 'PUT',
 						body: formData
 					});
 					const result = await resp.json();
 					if (resp.ok) {
-						alert('Upload successful!');
+						alert('Album updated successfully!');
+						window.location.href = `displayDetails.html?album_id=${encodeURIComponent(albumIdFromUrl)}`;
 					} else {
-						alert('Upload failed: ' + (result.error || 'Unknown error'));
+						alert('Update failed: ' + (result.error || 'Unknown error'));
 					}
 				} catch (err) {
-					alert('Upload error: ' + err);
+					alert('Update error: ' + err);
 				}
 			});
 			document.getElementById('resetBtn').addEventListener('click',()=>{
-				document.getElementById('form-tab1').reset();
-				document.getElementById('form-tab2').reset();
-				document.getElementById('form-tab3').reset();
+				loadAlbumForEdit();
 			});
 				// Home button navigation
 				document.getElementById('homeBtn').addEventListener('click', function(e) {
 					e.preventDefault();
 					window.location.href = 'home.html';
 				});
+				loadAlbumForEdit();
 				})();
 	</script>
 <script>

@@ -4,6 +4,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
 const fs = require('fs');
+const { execSync } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
@@ -191,10 +192,10 @@ app.get('/api/albums', async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const offset = (page - 1) * perPage;
   const orderBy = req.query.orderBy === 'year'
-    ? 'YEAR, album_id'
+    ? 'year_num, month_num, album_id'
     : req.query.orderBy === 'author'
       ? 'artist_name, artist_fname, album_id'
-      : 'YEAR, album_id';
+      : 'year_num, month_num, album_id';
   const orderDir = req.query.orderDir === 'desc' ? 'DESC' : 'ASC';
   const search = req.query.search ? req.query.search.trim() : '';
 
@@ -213,7 +214,18 @@ app.get('/api/albums', async (req, res) => {
       console.log('Count SQL:', countSQL, 'Params:', params);
       const [[{ count }]] = await conn.query(countSQL, params);
     // Sort the filtered table, then paginate
-      const dataSQL = `SELECT * FROM (SELECT album_id, picture, artist_fname, artist_name, title, YEAR AS year FROM albums ${where}) AS sorted_albums ORDER BY ${orderBy} ${orderDir} LIMIT ? OFFSET ?`;
+      const dataSQL = `SELECT * FROM (
+        SELECT
+          album_id,
+          picture,
+          artist_fname,
+          artist_name,
+          title,
+          YEAR AS year,
+          CAST(COALESCE(NULLIF(TRIM(YEAR), ''), '0') AS UNSIGNED) AS year_num,
+          CAST(COALESCE(NULLIF(TRIM(month), ''), '0') AS UNSIGNED) AS month_num
+        FROM albums ${where}
+      ) AS sorted_albums ORDER BY ${orderBy} ${orderDir} LIMIT ? OFFSET ?`;
       console.log('Data SQL:', dataSQL, 'Params:', [...params, perPage, offset]);
       const [rows] = await conn.query(dataSQL, [...params, perPage, offset]);
 
@@ -250,6 +262,191 @@ app.get('/api/album/:album_id', async (req, res) => {
   } catch (err) {
     console.error('API /api/album/:album_id error:', err && err.message ? err.message : err);
     res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (conn) await conn.end();
+  }
+});
+
+// Endpoint to get full album edit payload (album + musicians + songs)
+app.get('/api/album-edit/:album_id', async (req, res) => {
+  const album_id = req.params.album_id;
+  let conn;
+  try {
+    conn = await mysql.createConnection(config);
+    const [albumRows] = await conn.query(
+      `SELECT album_id, title, artist_name, artist_fname, city, country, grading, value,
+              published_by, month, year, filter, sample, picture, description, techDescription
+       FROM albums
+       WHERE album_id = ?`,
+      [album_id]
+    );
+    if (albumRows.length === 0) {
+      res.status(404).json({ error: 'Album not found' });
+      return;
+    }
+
+    const [musicianRows] = await conn.query(
+      `SELECT musician_name, musician_family_name, instruments
+       FROM musicians
+       WHERE album_id = ?
+       ORDER BY musician_family_name, musician_name`,
+      [album_id]
+    );
+
+    const [songRows] = await conn.query(
+      `SELECT song_no, song_title, duration
+       FROM songs
+       WHERE album_id = ?
+       ORDER BY song_no`,
+      [album_id]
+    );
+
+    res.json({
+      album: albumRows[0],
+      musicians: musicianRows,
+      songs: songRows
+    });
+  } catch (err) {
+    console.error('API /api/album-edit/:album_id error:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    if (conn) await conn.end();
+  }
+});
+
+// Update album, musicians, and songs
+app.put('/api/album/:album_id', upload.fields([
+  { name: 'sample', maxCount: 1 },
+  { name: 'picture', maxCount: 1 }
+]), async (req, res) => {
+  const album_id = req.params.album_id;
+  let conn;
+  try {
+    conn = await mysql.createConnection(config);
+    await conn.beginTransaction();
+
+    const [existingRows] = await conn.query(
+      'SELECT sample, picture FROM albums WHERE album_id = ?',
+      [album_id]
+    );
+    if (existingRows.length === 0) {
+      await conn.rollback();
+      res.status(404).json({ error: 'Album not found' });
+      return;
+    }
+
+    const files = req.files || {};
+    const body = req.body || {};
+    const sampleFile = files.sample ? files.sample[0].filename : existingRows[0].sample;
+    const pictureFile = files.picture ? files.picture[0].filename : existingRows[0].picture;
+
+    await conn.query(
+      `UPDATE albums
+       SET title = ?, artist_name = ?, artist_fname = ?, city = ?, country = ?, grading = ?,
+           value = ?, published_by = ?, month = ?, year = ?, filter = ?, sample = ?, picture = ?,
+           description = ?, techDescription = ?
+       WHERE album_id = ?`,
+      [
+        body.title || '',
+        body.artist_name || '',
+        body.artist_fname || '',
+        body.city || '',
+        body.country || '',
+        body.grading || '',
+        body.value || '',
+        body.published_by || '',
+        body.month || '',
+        body.year || '',
+        body.filter || '',
+        sampleFile,
+        pictureFile,
+        body.description || '',
+        body.techDescription || '',
+        album_id
+      ]
+    );
+
+    await conn.query('DELETE FROM songs WHERE album_id = ?', [album_id]);
+
+    let musicians = {};
+    try {
+      musicians = JSON.parse(body.tab2 || '{}');
+    } catch (e) {
+      musicians = {};
+    }
+    const names = musicians.musician_name instanceof Array ? musicians.musician_name : (musicians.musician_name ? [musicians.musician_name] : []);
+    const families = musicians.musician_family_name instanceof Array ? musicians.musician_family_name : (musicians.musician_family_name ? [musicians.musician_family_name] : []);
+    const instruments = musicians.instruments instanceof Array ? musicians.instruments : (musicians.instruments ? [musicians.instruments] : []);
+
+    const normalizedMusicians = [];
+    for (let i = 0; i < names.length; i++) {
+      const musician_name = (names[i] || '').trim();
+      const musician_family_name = (families[i] || '').trim();
+      const instr = (instruments[i] || '').trim();
+      if (!musician_name && !musician_family_name && !instr) continue;
+      normalizedMusicians.push({ musician_name, musician_family_name, instr });
+    }
+
+    const [existingAlbumMusicians] = await conn.query(
+      'SELECT musician_id FROM musicians WHERE album_id = ? ORDER BY musician_id',
+      [album_id]
+    );
+
+    for (let i = 0; i < normalizedMusicians.length; i++) {
+      const m = normalizedMusicians[i];
+      if (i < existingAlbumMusicians.length) {
+        await conn.query(
+          `UPDATE musicians
+           SET musician_name = ?, musician_family_name = ?, instruments = ?
+           WHERE musician_id = ?`,
+          [m.musician_name, m.musician_family_name, m.instr, existingAlbumMusicians[i].musician_id]
+        );
+      } else {
+        await conn.query(
+          'INSERT INTO musicians (album_id, musician_name, musician_family_name, instruments) VALUES (?, ?, ?, ?)',
+          [album_id, m.musician_name, m.musician_family_name, m.instr]
+        );
+      }
+    }
+
+    // Keep extra existing musicians but detach from album to avoid FK issues with biography references.
+    for (let i = normalizedMusicians.length; i < existingAlbumMusicians.length; i++) {
+      await conn.query(
+        'UPDATE musicians SET album_id = NULL, instruments = NULL WHERE musician_id = ?',
+        [existingAlbumMusicians[i].musician_id]
+      );
+    }
+
+    let songs = {};
+    try {
+      songs = JSON.parse(body.tab3 || '{}');
+    } catch (e) {
+      songs = {};
+    }
+    const song_nos = songs.song_number instanceof Array ? songs.song_number : (songs.song_number ? [songs.song_number] : []);
+    const song_titles = songs.song_title instanceof Array ? songs.song_title : (songs.song_title ? [songs.song_title] : []);
+    const durations = songs.duration instanceof Array ? songs.duration : (songs.duration ? [songs.duration] : []);
+
+    for (let i = 0; i < song_nos.length; i++) {
+      const song_no = Number(song_nos[i] || i + 1);
+      const song_title = (song_titles[i] || '').trim();
+      const duration = (durations[i] || '').trim();
+      if (!song_title && !duration) continue;
+
+      await conn.query(
+        'INSERT INTO songs (album_id, song_no, song_title, duration) VALUES (?, ?, ?, ?)',
+        [album_id, song_no, song_title, duration]
+      );
+    }
+
+    await conn.commit();
+    res.json({ message: 'Album updated successfully', album_id, sample: sampleFile, picture: pictureFile });
+  } catch (err) {
+    if (conn) {
+      try { await conn.rollback(); } catch (rollbackErr) {}
+    }
+    console.error('API PUT /api/album/:album_id error:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Database error', detail: err && err.message ? err.message : String(err) });
   } finally {
     if (conn) await conn.end();
   }
@@ -444,8 +641,29 @@ app.get('/api/biography', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use.`);
+    try {
+      const out = execSync(`lsof -i :${PORT} -P -n`, { encoding: 'utf8' }).trim();
+      if (out) {
+        console.error('Process using this port:');
+        console.error(out);
+      }
+    } catch (lookupErr) {
+      console.error('Could not determine process using the port.');
+    }
+    console.error(`Fix: stop the process above, or run with another port, e.g. PORT=3001 node server.js`);
+    process.exit(1);
+    return;
+  }
+
+  console.error('Server startup error:', err && err.message ? err.message : err);
+  process.exit(1);
 });
 
 // Endpoint to get paginated songs for an album
